@@ -1,0 +1,204 @@
+rules_version = '2';
+
+// Regras de segurança do Cloud Firestore do EducAEE.
+// Cada usuário só lê e escreve nos próprios dados (users/{uid}/**). Todo o resto é negado.
+// Como publicar: veja o README (seção "Regras do Firestore").
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function ehDono(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function atividades() {
+      return ['memoria', 'igual', 'alvo', 'letras', 'sequencia',
+              'emocoes', 'contar', 'caminhos', 'pares', 'pegue', 'segure',
+              'sombra', 'faltando', 'sons', 'monte', 'rotina'];
+    }
+
+    // Níveis das atividades novas: opcionais (o cadastro só grava os das 5 primeiras).
+    function nivelOpcional(niveis, id) {
+      return !(id in niveis) || nivelValido(niveis[id]);
+    }
+
+    function inteiroNaoNegativo(valor) {
+      return valor is int && valor >= 0;
+    }
+
+    function nivelValido(nivel) {
+      return nivel is int && nivel >= 1 && nivel <= 4;
+    }
+
+    // ---------- users/{uid} ----------
+
+    function usuarioValido(dados) {
+      return dados.keys().hasOnly(['email', 'nome', 'criadoEm', 'videosEscondidos'])
+        && dados.email is string && dados.email.size() <= 254
+        && dados.nome is string && dados.nome.size() <= 200
+        && dados.criadoEm is timestamp
+        // Vídeos do YouTube que a professora escondeu (lista de ids, no máximo 500).
+        && (!('videosEscondidos' in dados)
+            || (dados.videosEscondidos is list && dados.videosEscondidos.size() <= 500));
+    }
+
+    // ---------- users/{uid}/alunos/{alunoId} ----------
+
+    function perfilValido(perfil) {
+      return perfil is map
+        && perfil.keys().hasOnly(['tamanho', 'contraste', 'sons', 'animacoesReduzidas',
+                                  'leituraVoz', 'velocidadeVoz', 'tema'])
+        && perfil.keys().hasAll(['tamanho', 'contraste', 'sons', 'animacoesReduzidas',
+                                 'leituraVoz', 'velocidadeVoz', 'tema'])
+        && perfil.tamanho in ['normal', 'grande', 'muito_grande']
+        && perfil.contraste in ['normal', 'alto']
+        && perfil.sons is bool
+        && perfil.animacoesReduzidas is bool
+        && perfil.leituraVoz is bool
+        && perfil.velocidadeVoz in ['lenta', 'normal']
+        && perfil.tema in ['animais', 'dinossauros', 'veiculos', 'frutas', 'espaco'];
+    }
+
+    function niveisValidos(niveis) {
+      return niveis is map
+        && niveis.keys().hasOnly(atividades())
+        && niveis.keys().hasAll(['memoria', 'igual', 'alvo', 'letras', 'sequencia'])
+        && nivelValido(niveis.memoria)
+        && nivelValido(niveis.igual)
+        && nivelValido(niveis.alvo)
+        && nivelValido(niveis.letras)
+        && nivelValido(niveis.sequencia)
+        && nivelOpcional(niveis, 'emocoes')
+        && nivelOpcional(niveis, 'contar')
+        && nivelOpcional(niveis, 'caminhos')
+        && nivelOpcional(niveis, 'pares')
+        && nivelOpcional(niveis, 'pegue')
+        && nivelOpcional(niveis, 'segure')
+        && nivelOpcional(niveis, 'sombra')
+        && nivelOpcional(niveis, 'faltando')
+        && nivelOpcional(niveis, 'sons')
+        && nivelOpcional(niveis, 'monte')
+        && nivelOpcional(niveis, 'rotina');
+    }
+
+    function textoAnalise(texto) {
+      return texto is string && texto.size() <= 3000;
+    }
+
+    // Última análise com IA: só texto (com "o aluno", sem nome), período, rodadas e data.
+    function analiseValida(analise) {
+      return analise is map
+        && analise.keys().hasOnly(['visaoGeral', 'fortes', 'evoluiu', 'atencao', 'sugestoes',
+                                   'periodo', 'rodadas', 'geradaEm'])
+        && analise.keys().hasAll(['visaoGeral', 'evoluiu', 'atencao', 'sugestoes',
+                                  'periodo', 'rodadas', 'geradaEm'])
+        && textoAnalise(analise.visaoGeral) && analise.visaoGeral.size() >= 1
+        && (!('fortes' in analise) || textoAnalise(analise.fortes))
+        && textoAnalise(analise.evoluiu)
+        && textoAnalise(analise.atencao)
+        && textoAnalise(analise.sugestoes)
+        && analise.periodo in ['7', '30', 'tudo']
+        && inteiroNaoNegativo(analise.rodadas)
+        && analise.geradaEm is timestamp;
+    }
+
+    // A análise é opcional. Se é nova ou mudou, tem de vir com a hora do servidor.
+    function analiseNovaOk(novo) {
+      return !('analise' in novo)
+        || (analiseValida(novo.analise) && novo.analise.geradaEm == request.time);
+    }
+
+    function analiseOk(novo, antigo) {
+      return !('analise' in novo)
+        || (analiseValida(novo.analise)
+            && (('analise' in antigo && novo.analise == antigo.analise)
+                || novo.analise.geradaEm == request.time));
+    }
+
+    // Prancha de comunicação personalizada: ids dos cartões (no máximo 80) e cartões por tela.
+    function pranchaValida(prancha) {
+      return prancha is map
+        && prancha.keys().hasOnly(['cartoes', 'porTela'])
+        && prancha.keys().hasAll(['cartoes', 'porTela'])
+        && prancha.cartoes is list && prancha.cartoes.size() <= 80
+        && prancha.porTela in [2, 4, 6, 9];
+    }
+
+    // Cartão próprio da prancha: palavra, categoria, pictograma (WebP pequeno) e fala (MP3).
+    function cartaoValido(dados) {
+      return dados.keys().hasOnly(['palavra', 'categoria', 'imagem', 'audio', 'criadoEm'])
+        && dados.keys().hasAll(['palavra', 'categoria', 'imagem', 'audio', 'criadoEm'])
+        && dados.palavra is string && dados.palavra.size() >= 1 && dados.palavra.size() <= 30
+        && dados.categoria in ['quero', 'sinto', 'respostas', 'pessoas']
+        && dados.imagem is string && dados.imagem.size() <= 120000
+        && dados.imagem.matches('^data:image/(webp|png|jpeg);base64,.*')
+        && (dados.audio == null
+            || (dados.audio is string && dados.audio.size() <= 150000
+                && dados.audio.matches('^data:audio/mpeg;base64,.*')))
+        && dados.criadoEm == request.time;
+    }
+
+    function alunoValido(dados) {
+      return dados.keys().hasOnly(['nome', 'turma', 'perfil', 'niveis', 'criadoEm', 'atualizadoEm',
+                                   'analise', 'prancha'])
+        && (!('prancha' in dados) || pranchaValida(dados.prancha))
+        && dados.keys().hasAll(['nome', 'turma', 'perfil', 'niveis', 'criadoEm', 'atualizadoEm'])
+        // Nome: 1 a 40 caracteres, e não só espaços.
+        && dados.nome is string && dados.nome.size() >= 1 && dados.nome.size() <= 40
+        && dados.nome.matches('.*\\S.*')
+        && dados.turma is string && dados.turma.size() <= 30
+        && perfilValido(dados.perfil)
+        && niveisValidos(dados.niveis)
+        && dados.criadoEm is timestamp
+        && dados.atualizadoEm == request.time;
+    }
+
+    // ---------- users/{uid}/alunos/{alunoId}/sessoes/{sessaoId} ----------
+
+    function sessaoValida(dados) {
+      return dados.keys().hasOnly(['atividadeId', 'nivel', 'acertos', 'erros', 'duracaoSeg', 'concluidaEm'])
+        && dados.keys().hasAll(['atividadeId', 'nivel', 'acertos', 'erros', 'duracaoSeg', 'concluidaEm'])
+        && dados.atividadeId in atividades()
+        && nivelValido(dados.nivel)
+        && inteiroNaoNegativo(dados.acertos)
+        && inteiroNaoNegativo(dados.erros)
+        && inteiroNaoNegativo(dados.duracaoSeg)
+        // Hora do aparelho (a rodada pode ter sido feita offline); não pode estar no futuro.
+        && dados.concluidaEm is timestamp
+        && dados.concluidaEm <= request.time + duration.value(5, 'm');
+    }
+
+    match /users/{uid} {
+      allow read, delete: if ehDono(uid);
+      allow create: if ehDono(uid)
+        && usuarioValido(request.resource.data)
+        && request.resource.data.criadoEm == request.time;
+      allow update: if ehDono(uid)
+        && usuarioValido(request.resource.data)
+        && request.resource.data.criadoEm == resource.data.criadoEm;
+
+      // Cartões próprios da prancha: criados e excluídos (nunca alterados).
+      match /cartoes/{cartaoId} {
+        allow read, delete: if ehDono(uid);
+        allow create: if ehDono(uid) && cartaoValido(request.resource.data);
+      }
+
+      match /alunos/{alunoId} {
+        allow read, delete: if ehDono(uid);
+        allow create: if ehDono(uid)
+          && alunoValido(request.resource.data)
+          && analiseNovaOk(request.resource.data)
+          && request.resource.data.criadoEm == request.time;
+        allow update: if ehDono(uid)
+          && alunoValido(request.resource.data)
+          && analiseOk(request.resource.data, resource.data)
+          && request.resource.data.criadoEm == resource.data.criadoEm;
+
+        // Sessões são registros: criadas uma vez e nunca alteradas.
+        match /sessoes/{sessaoId} {
+          allow read, delete: if ehDono(uid);
+          allow create: if ehDono(uid) && sessaoValida(request.resource.data);
+        }
+      }
+    }
+  }
+}

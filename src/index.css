@@ -1,0 +1,141 @@
+@import 'tailwindcss';
+
+/*
+ * Identidade visual do EducAEE: pastéis vivos, calmos, sem neon.
+ * Contrastes conferidos sobre o fundo "creme" (WCAG AA):
+ *   tinta 13,5:1 · tinta-suave 7:1 · azul 5,2:1 · coral 4,8:1 · vermelho 6,3:1 · verde 4,9:1
+ *   texto branco sobre azul 5,4:1 e sobre azul-escuro 7,1:1
+ */
+@theme static {
+  --font-sans: 'Nunito', ui-rounded, system-ui, sans-serif;
+
+  --color-creme: #fffaf2;
+  --color-tinta: #1f2d3d;
+  --color-tinta-suave: #4a5868;
+  --color-borda: #e8dfd2;
+
+  --color-azul: #2b6cb0;
+  --color-azul-escuro: #235a94;
+  --color-coral: #c8410b;
+  --color-verde: #2f7d4f;
+  --color-vermelho: #b42318;
+
+  /* Fundos pastel (sempre com texto tinta ou tinta-suave por cima) */
+  --color-ceu: #dcebfb;
+  --color-menta: #d5f3e4;
+  --color-pessego: #ffe2d1;
+  --color-lilas: #e9e1fb;
+  --color-sol: #fff0bf;
+  --color-rosa: #fce1ec;
+
+  /* Alto contraste (atividades): fundo escuro liso, contornos grossos, contraste ≥ 7:1.
+     texto 18,9:1 e contorno 13,7:1 sobre o fundo */
+  --color-ac-fundo: #0d1117;
+  --color-ac-texto: #ffffff;
+  --color-ac-contorno: #ffd84d;
+
+  /* Texto sobre as cores fortes (azul, verde, vermelho, tinta): branco no claro, escuro no
+     modo escuro. Use text-sobre-cor no lugar de text-white. */
+  --color-sobre-cor: #ffffff;
+
+  /* Retorno de acerto: aparece uma vez, sem piscar (desligado com animações reduzidas). */
+  --animate-surgir: surgir 0.4s ease-out;
+  @keyframes surgir {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  --radius-4xl: 2rem;
+  --shadow-suave: 0 2px 10px rgb(31 45 61 / 0.08);
+}
+
+/*
+ * Modo escuro (seletor no topo; src/lib/tema.ts põe data-tema="escuro" no <html>).
+ * Azul-marinho calmo, sem preto puro. As mesmas variáveis mudam de valor, então todas as
+ * classes (bg-white, text-tinta, bg-ceu...) acompanham. "white" vira a superfície dos cartões.
+ * Só na tela: a impressão continua clara. O alto contraste (ac-*) não muda.
+ * Contrastes (WCAG AA) conferidos em src/lib/tema-contraste.test.ts.
+ */
+@media screen {
+  html[data-tema='escuro'] {
+    --color-creme: #131a23;
+    --color-white: #1c2531;
+    --color-tinta: #e8edf3;
+    --color-tinta-suave: #adb9c6;
+    --color-borda: #364253;
+
+    --color-azul: #7fb3ea;
+    --color-azul-escuro: #a8cbf2;
+    --color-coral: #ff9466;
+    --color-verde: #6fcf97;
+    --color-vermelho: #f4877d;
+
+    --color-ceu: #1f3651;
+    --color-menta: #1b3a2d;
+    --color-pessego: #3f2b21;
+    --color-lilas: #2e2746;
+    --color-sol: #3b3220;
+    --color-rosa: #3f2333;
+
+    --color-sobre-cor: #0f1620;
+    --shadow-suave: 0 2px 10px rgb(0 0 0 / 0.35);
+  }
+}
+
+/* Silhueta (atividades "Qual é a sombra?" e pares figura–sombra): preta no claro, clara no escuro. */
+.silhueta {
+  filter: brightness(0);
+}
+@media screen {
+  html[data-tema='escuro'] .silhueta {
+    filter: brightness(0) invert(0.88);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-creme font-sans text-tinta antialiased;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-azul-escuro);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Impressão (relatório de progresso): fundo branco, sem sombras, margens de papel. */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  * {
+    box-shadow: none !important;
+  }
+}

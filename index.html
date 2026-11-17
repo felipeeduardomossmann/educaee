@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#fffaf2" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Atividades educativas adaptáveis para o Atendimento Educacional Especializado (AEE). Gratuito e sem propaganda."
+    />
+    <title>EducAEE – Trilhando a sua evolução de maneira personalizada</title>
+    <script>
+      // Tema escuro antes da primeira pintura (sem "piscar" claro). Mesma lógica de src/lib/tema.ts.
+      try {
+        var t = localStorage.getItem('educaee:tema')
+        if (t === 'escuro' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches))
+          document.documentElement.dataset.tema = 'escuro'
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

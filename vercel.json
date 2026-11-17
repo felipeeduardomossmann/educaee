@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["gru1"],
+  "functions": {
+    "api/*.ts": { "maxDuration": 60 }
+  },
+  "rewrites": [
+    {
+      "source": "/__/auth/:caminho*",
+      "destination": "https://educaee-97f9b.firebaseapp.com/__/auth/:caminho*"
+    },
+    {
+      "source": "/__/firebase/:caminho*",
+      "destination": "https://educaee-97f9b.firebaseapp.com/__/firebase/:caminho*"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

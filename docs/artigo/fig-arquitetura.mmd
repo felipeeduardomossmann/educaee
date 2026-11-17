@@ -1,0 +1,37 @@
+%% Arquitetura do EducAEE e fluxo de uma requisição de IA (números = ordem do fluxo).
+%% Renderizado em preto e branco para impressão.
+flowchart TB
+    subgraph NAV["Navegador (PWA, funciona offline)"]
+        UI["Aplicação React<br/>atividades, prancha, progresso"]
+        SW["Service worker<br/>cache do site, figuras e falas"]
+        CL["Cópia local do Firestore<br/>(rodadas feitas offline)"]
+    end
+
+    subgraph VER["Vercel"]
+        EST["Hospedagem do site estático<br/>(HTML, JS, CSS)"]
+        subgraph FN["Funções serverless (São Paulo, gru1)"]
+            API["/api/desenho · /api/analise<br/>/api/pictograma · /api/videos<br/>/api/transferencia"]
+        end
+    end
+
+    subgraph FB["Google Firebase"]
+        AUTH["Firebase Authentication<br/>(login com Google)"]
+        FS[("Cloud Firestore (São Paulo)<br/>alunos, rodadas, cartões,<br/>contadores de uso")]
+    end
+
+    subgraph EXT["Serviços externos"]
+        GEM["Google Gemini<br/>imagem · texto · voz"]
+        YT["YouTube Data API v3"]
+    end
+
+    UI -- "(1) login" --> AUTH
+    AUTH -- "(2) token de ID" --> UI
+    UI -- "(3) pedido + token" --> API
+    API -- "(4) confere o token<br/>(chaves públicas)" --> AUTH
+    API -- "(5) reserva no limite diário/mensal" --> FS
+    API -- "(6) só indicadores,<br/>sem nome do aluno" --> GEM
+    API -. "busca de vídeos" .-> YT
+    GEM -- "(7) resposta" --> API
+    API -- "(8) resultado" --> UI
+    UI -- "rodadas e análises<br/>(regras de segurança)" --> FS
+    CL <-. "sincroniza" .-> FS
